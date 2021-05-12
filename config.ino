@@ -32,6 +32,7 @@ bool loadConfigFile() {
       strlcpy(config.broker_host, root["broker_host"] | "", sizeof(config.broker_host));
       config.broker_port = root["broker_port"] | 1883;
       strlcpy(config.client_id, root["client_id"] | "energy-meter", sizeof(config.client_id));
+      config.broker_tout = root["broker_tout"] | 300; // Default, push MQTT every 300 seconds
       // Other
       config.ota_enable = root["ota_enable"] | true;
       config.power_alarm = root["power_alarm"] | 0;
@@ -55,6 +56,7 @@ bool saveConfigFile() {
   root["broker_host"] = config.broker_host;
   root["broker_port"] = config.broker_port;
   root["client_id"] = config.client_id;
+  root["broker_tout"] = config.broker_tout;
   root["ota_enable"] = config.ota_enable;
   root["power_alarm"] = config.power_alarm;
   

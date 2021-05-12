@@ -58,6 +58,9 @@ String templateProcessor(const String& var)
   if(var=="client_id") {
     return String(config.client_id);
   }
+  if(var=="broker_tout") {
+    return String(config.broker_tout);
+  }
   // Auth
   if(var=="admin_username") {
     return String(config.admin_username);
@@ -117,6 +120,9 @@ void initWebServer() {
     if(request->hasParam("client_id", true)) {
         strcpy(config.client_id,request->getParam("client_id", true)->value().c_str());
     }
+    if(request->hasParam("broker_tout", true)) {
+        config.broker_tout = atoi(request->getParam("broker_tout", true)->value().c_str());
+    } 
     // ADMIN
     if(request->hasParam("admin_username", true)) {
         strcpy(config.admin_username,request->getParam("admin_username", true)->value().c_str());

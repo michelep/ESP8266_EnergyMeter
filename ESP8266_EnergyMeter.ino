@@ -5,6 +5,10 @@
  * 
  * to be connected to serial port of PZEM-004T power meter module
  * 
+ * 12.05.2021 - v0.0.1
+ * - First release
+ * 
+ * 
  */
 #define __DEBUG__
 
@@ -74,6 +78,7 @@ struct Config {
   char broker_host[24];
   unsigned int broker_port;
   char client_id[24];
+  unsigned int broker_tout;
   // Alarms config
   unsigned int power_alarm;
 };
@@ -188,6 +193,7 @@ void setup() {
   initWebServer();
 
   // Add environmental sensor data fetch task
+  mqttTask.setInterval(1000*config.broker_tout);
   runner.addTask(mqttTask);
   mqttTask.enable();
 
@@ -231,6 +237,12 @@ void loop() {
     if(!isnan(p)) {
       Serial.print("Power: "); Serial.print(p); Serial.println("W");
       env["p"] = p;
+      // Check for power alarm threshold
+      if((config.power_alarm > 0)&&(p > config.power_alarm)) {
+        env["is_alarm"] = true;
+      } else {
+        env["is_alarm"] = false;
+      }
     }
   
     float e = pzem.energy(ip);
@@ -238,7 +250,15 @@ void loop() {
       Serial.print("Energy: "); Serial.print(e,3); Serial.println("kWh");
       env["e"] = e;
     }
+
+    // If is_alarm is true, then BEEP!
+    if(env["is_alarm"]) {
+      analogWrite(BUZZER, 205);
+      delay(200);
+      analogWrite(BUZZER, 0);      
+    }
     
+    // Go ahead!
     env["uptime"] = millis() / 1000;
     last = millis();
   }
