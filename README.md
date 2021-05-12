@@ -1,2 +1,6 @@
 # ESP8266_EnergyMeter
-WiFi home energy meter with PZEM004T module and ESP8266
+## WiFi home energy meter with PZEM004T module and ESP8266
+
+Use PZEM004T, a cheap power meter module, and an ESP8266 board (with a bunch of other components, like a buzzer, a transistor and a resistor. Plus a HiLink 5V power supply) to monitor home power consumption.
+
+
