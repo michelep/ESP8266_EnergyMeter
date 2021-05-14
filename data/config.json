@@ -1,1 +1,1 @@
-{"wifi_essid":"","wifi_password":"","ntp_server":"time.ien.it","ntp_timezone":1}
+{"wifi_essid":"","wifi_password":"","hostname":"energy-meter","ntp_server":"time.ien.it","broker_host":"","broker_port":,"client_id":"energy-meter","broker_tout":300,"ota_enable":true,"power_alarm":2800,"energy_reset":true,"energy_idx":0}

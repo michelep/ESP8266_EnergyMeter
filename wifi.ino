@@ -1,7 +1,12 @@
-// 
-// WiFi
-//
-
+/* 
+ * ESP8266 Energy Meter
+ *  
+ * Written by Michele <o-zone@zerozone.it> Pinassi 
+ * Released under GPLv3 - No any warranty 
+ * 
+ * WiFi procedures
+ * 
+ */
 
 // ************************************
 // scanWifi()
@@ -38,6 +43,9 @@ void scanWifi() {
 //
 // connect to configured WiFi network
 // ************************************
+
+const PROGMEM char* ntpServer = "pool.ntp.org";
+
 bool connectToWifi() {
   uint8_t timeout=0;
   if(strlen(config.wifi_essid) > 0) {
@@ -63,7 +71,7 @@ bool connectToWifi() {
         // Add service to MDNS-SD
         MDNS.addService("http", "tcp", 80);
       }
-      
+
       NTP.onNTPSyncEvent([](NTPSyncEvent_t event) {
         ntpEvent = event;
         syncEventTriggered = true;
@@ -72,8 +80,8 @@ bool connectToWifi() {
       // NTP
       DEBUG_PRINTLN("[INIT] NTP sync time on "+String(config.ntp_server));
       NTP.begin(config.ntp_server, config.ntp_timezone, true, 0);
-      NTP.setInterval(63);
-
+      NTP.setInterval(600);
+    
       return true;  
     } else {
       DEBUG_PRINTLN("[ERROR] Failed to connect to WiFi");

@@ -1,6 +1,12 @@
-// Written by Michele <o-zone@zerozone.it> Pinassi
-// Released under GPLv3 - No any warranty
-
+/* 
+ * ESP8266 Energy Meter
+ *  
+ * Written by Michele <o-zone@zerozone.it> Pinassi 
+ * Released under GPLv3 - No any warranty 
+ * 
+ * Web server procedures
+ * 
+ */
 String templateProcessor(const String& var)
 {
   //
@@ -72,7 +78,18 @@ String templateProcessor(const String& var)
   if(var=="power_alarm") {
     return String(config.power_alarm);
   }   
-  
+  if(var=="energy_reset") {
+    if(config.energy_reset) {
+      return String("checked");  
+    } else {
+      return String("");
+    }
+  }
+  if(var=="reset_date") {
+    // Return last reset date time
+    return String(ctime(&config.reset_date));
+  }
+  //
   return String();
 }
 
@@ -84,8 +101,8 @@ String templateProcessor(const String& var)
 void initWebServer() {
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html").setTemplateProcessor(templateProcessor).setAuthentication(config.admin_username, config.admin_password);
 
-  server.on("/restart", HTTP_POST, [](AsyncWebServerRequest *request) {
-    ESP.restart();
+  server.on("/restart", HTTP_GET, [](AsyncWebServerRequest *request) {
+    is_restart=true;
     request->redirect("/?result=ok");
   });
     
@@ -103,7 +120,7 @@ void initWebServer() {
     }
     if(request->hasParam("ntp_timezone", true)) {
         config.ntp_timezone = atoi(request->getParam("ntp_timezone", true)->value().c_str());
-    } 
+    }
     // OTA
     if(request->hasParam("ota_enable", true)) {
       config.ota_enable=true;        
@@ -134,12 +151,22 @@ void initWebServer() {
     if(request->hasParam("power_alarm", true)) {
         config.power_alarm = atoi(request->getParam("power_alarm", true)->value().c_str());
     }     
+    if(request->hasParam("energy_reset", true)) {
+      config.energy_reset=true;        
+    } else {
+      config.energy_reset=false;
+    } 
     // 
     if(saveConfigFile()) {
       request->redirect("/?result=ok");
     } else {
       request->redirect("/?result=error");      
     }
+  });
+
+  server.on("/reset",HTTP_GET, [](AsyncWebServerRequest *request) {
+    energyReset();
+    request->redirect("/?result=ok");
   });
   
   server.on("/ajax", HTTP_POST, [] (AsyncWebServerRequest *request) {

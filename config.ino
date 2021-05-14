@@ -36,6 +36,9 @@ bool loadConfigFile() {
       // Other
       config.ota_enable = root["ota_enable"] | true;
       config.power_alarm = root["power_alarm"] | 0;
+      config.reset_date = root["reset_date"] | now();
+      config.energy_reset = root["energy_reset"] | false;
+      config.energy_idx = root["energy_idx"] | 0;
       // 
       DEBUG_PRINTLN("OK");
     }
@@ -59,7 +62,10 @@ bool saveConfigFile() {
   root["broker_tout"] = config.broker_tout;
   root["ota_enable"] = config.ota_enable;
   root["power_alarm"] = config.power_alarm;
-  
+  root["energy_reset"] = config.energy_reset;
+  root["energy_idx"] = config.energy_idx;
+  root["reset_date"] = config.reset_date;
+    
   configFile = SPIFFS.open(CONFIG_FILE, "w");
   if(!configFile) {
     DEBUG_PRINTLN("ERROR: Failed to create config file !");

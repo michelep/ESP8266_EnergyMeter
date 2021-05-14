@@ -8,14 +8,23 @@
  * 12.05.2021 - v0.0.1
  * - First release
  * 
+ * 14.05.2021 - v0.0.2
+ * - Added support for v3.0
+ * - Added energy reset (manual or at midnight, every day)
+ * - Added time alarm
+ * - minor changes
  * 
  */
+ 
 #define __DEBUG__
+
+// If PZEM004Tv3.0 board, define this.
+#undef V3
 
 // Firmware data
 const char BUILD[] = __DATE__ " " __TIME__;
 #define FW_NAME         "energymeter"
-#define FW_VERSION      "0.0.1"
+#define FW_VERSION      "0.0.2"
 
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
@@ -36,23 +45,39 @@ const char BUILD[] = __DATE__ " " __TIME__;
 // https://arduinojson.org/
 #include <ArduinoJson.h>
 
-// NTP ClientLib
+// TimeAlarms
+// https://github.com/PaulStoffregen/TimeAlarms
+#include <TimeAlarms.h>
+
+// NTP
 // https://github.com/gmag11/NtpClient
 #include <NtpClientLib.h>
 
-// NTP
 NTPSyncEvent_t ntpEvent;
 bool syncEventTriggered = false; // True if a time even has been triggered
 
-// PZEM-004T library
-// https://github.com/olehs/PZEM004T/
-#include <PZEM004T.h>
-
+// PZEM004T module
 #define PZEM_TX 4 // Connects to the RX pin on the PZEM
 #define PZEM_RX 5 // Connects to the TX pin on the PZEM
 
+// PZEM-004T library v3
+#ifdef V3
+#warning "Support for PZEM004T V3 board is untested!"
+// https://github.com/mandulaj/PZEM-004T-v30
+// #TODO
+#include <PZEM004Tv30.h>
+
+PZEM004Tv30 pzem(PZEM_RX,PZEM_TX);  // RX,TX pins to be connected to TX,RX of PZEM
+
+#else
+#warning "PZEM004T V1 or V2 board"
+// PZEM-004T library for v1 and v2
+// https://github.com/olehs/PZEM004T/
+#include <PZEM004T.h>
+
 PZEM004T pzem(PZEM_RX,PZEM_TX);  // RX,TX pins to be connected to TX,RX of PZEM
 IPAddress ip(192,168,1,1);
+#endif
 
 // MQTT PubSub client
 // https://github.com/knolleary/pubsubclient
@@ -81,6 +106,9 @@ struct Config {
   unsigned int broker_tout;
   // Alarms config
   unsigned int power_alarm;
+  bool energy_reset;
+  time_t reset_date;
+  unsigned long energy_idx; // This is needed for "soft" power reset on v1 and v2 boards: keeps last energy value before reset. 
 };
 
 #define CONFIG_FILE "/config.json"
@@ -91,6 +119,7 @@ Config config; // Global config object
 AsyncWebServer server(80);
 
 // Task Scheduler
+// https://github.com/arkhipenko/TaskScheduler
 #include <TaskScheduler.h>
 
 // Scheduler and tasks...
@@ -102,6 +131,8 @@ Task mqttTask(MQTT_INTERVAL, TASK_FOREVER, &mqttTaskCB);
 
 // Define BUZZER Pin
 #define BUZZER 0 // D3
+
+bool is_restart=false; // If true, restart ESP
 
 // ************************************
 // DEBUG_PRINT() and DEBUG_PRINTLN()
@@ -123,6 +154,32 @@ void DEBUG_PRINTLN(String message) {
 unsigned int last=0;
 DynamicJsonDocument env(128);
 
+void buzzerBeep(uint8_t t) {
+  analogWrite(BUZZER, 205);
+  Alarm.delay(t);
+  analogWrite(BUZZER, 0);
+}
+
+/*
+ * energyReset - Reset energy counter
+ */
+void energyReset() {
+#ifdef V3
+    pzem.resetEnergy();
+#else
+    // soft reset
+    config.energy_idx = atoi(env["e"]);
+#endif
+  config.reset_date = now();
+  // then, save to SPIFFS...
+  saveConfigFile();
+}
+
+void resetAlarm() {
+  if(config.energy_reset) {
+    energyReset();
+  }
+}
 /*
  * SETUP()
  */
@@ -143,10 +200,9 @@ void setup() {
   delay(1000);
 
   pinMode(BUZZER, OUTPUT);
-  analogWrite(BUZZER, 205);
-  delay(500);
-  analogWrite(BUZZER, 0);
 
+  buzzerBeep(500);
+  
   // Initialize SPIFFS
   DEBUG_PRINT("[INIT] Initializing SPIFFS...");
   if(!SPIFFS.begin()){
@@ -164,6 +220,9 @@ void setup() {
   // Load configuration
   loadConfigFile();
 
+  // Connect to WiFi
+  connectToWifi();
+  
   // Setup OTA
   ArduinoOTA.onStart([]() {
     Serial.println("[OTA] Update Start");
@@ -197,7 +256,14 @@ void setup() {
   runner.addTask(mqttTask);
   mqttTask.enable();
 
+  // Add alarm
+  Alarm.alarmRepeat(0,0,0, resetAlarm);  // At midnight, every day, reset energy counter (if enabled)
+
   env["status"] = "Up and running";
+
+  buzzerBeep(100);
+  Alarm.delay(100);
+  buzzerBeep(100);
   // GO!
 }
 
@@ -209,11 +275,18 @@ void loop() {
 
   // Scheduler
   runner.execute();
-  
-  // NTP ?
+
+  // MQTT Client
+  mqttClient.loop();
+
+  // NTP
   if(syncEventTriggered) {
     processSyncEvent(ntpEvent);
     syncEventTriggered = false;
+  }
+
+  if(is_restart) {
+    ESP.restart();
   }
 
   if((millis() - last) > 1100) {
@@ -248,18 +321,23 @@ void loop() {
     float e = pzem.energy(ip);
     if(!isnan(e)) {
       Serial.print("Energy: "); Serial.print(e,3); Serial.println("kWh");
+#ifdef V3
       env["e"] = e;
+#else
+      env["e"] = e - config.energy_idx;
+#endif
     }
 
     // If is_alarm is true, then BEEP!
     if(env["is_alarm"]) {
-      analogWrite(BUZZER, 205);
-      delay(200);
-      analogWrite(BUZZER, 0);      
+      buzzerBeep(200);  
     }
     
     // Go ahead!
     env["uptime"] = millis() / 1000;
+    env["ts"] = now();
+    
     last = millis();
   }
+  Alarm.delay(10);
 }

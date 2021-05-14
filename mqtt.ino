@@ -1,27 +1,12 @@
-// ************************************
-// mqttConnect()
-//
-//
-// ************************************
-void mqttConnect() {
-  uint8_t timeout=10;
-  if(strlen(config.broker_host) > 0) {
-    DEBUG_PRINTLN("[MQTT] Attempting connection to "+String(config.broker_host)+":"+String(config.broker_port));
-    while((!mqttClient.connected())&&(timeout > 0)) {
-      // Attempt to connect
-      if (mqttClient.connect(config.client_id)) {
-        // Once connected, publish an announcement...
-        DEBUG_PRINTLN("[MQTT] Connected as "+String(config.client_id));
-      } else {
-        timeout--;
-        delay(500);
-      }
-    }
-    if(!mqttClient.connected()) {
-      DEBUG_PRINTLN("[MQTT] Connection failed");    
-    }
-  }
-}
+/* 
+ * ESP8266 Energy Meter
+ *  
+ * Written by Michele <o-zone@zerozone.it> Pinassi 
+ * Released under GPLv3 - No any warranty 
+ * 
+ * MQTT procedures
+ * 
+ */
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   DEBUG_PRINTLN("Message arrived: "+String(topic));
@@ -37,7 +22,11 @@ void mqttTaskCB() {
     
   // MQTT not connected? Connect!
   if (!mqttClient.connected()) {
-    mqttConnect();
+    if(!mqttConnect()) {
+      // If connection problem, return
+      env["status"] = "MQTT connection error"+String(mqttClient.state()); 
+      return;
+    }
   }
 
   // Now prepare MQTT message...
@@ -50,6 +39,24 @@ void mqttTaskCB() {
       DEBUG_PRINTLN("[MQTT] Publish "+String(topic)+":"+value);
     } else {
       DEBUG_PRINTLN("[MQTT] Publish failed!");
+      env["status"] = "MQTT publish failed: "+String(mqttClient.state());
     }
   }
+}
+
+bool mqttConnect() {
+  if(strlen(config.broker_host) > 0) {
+    DEBUG_PRINT("[MQTT] Attempting connection to "+String(config.broker_host)+":"+String(config.broker_port));
+    mqttClient.setServer(config.broker_host,config.broker_port);
+    mqttClient.setCallback(mqttCallback);
+    if (mqttClient.connect(config.client_id)) {
+      DEBUG_PRINTLN("[MQTT] Connected as "+String(config.client_id));
+      env["status"] = "MQTT connected as "+String(config.client_id);
+      return true;
+    } else {
+      DEBUG_PRINTLN("[MQTT] Connection failed");   
+      return false;
+    }
+  }
+  return false;
 }

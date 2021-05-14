@@ -1,15 +1,14 @@
-// Written by Michele <o-zone@zerozone.it> Pinassi
-// Released under GPLv3 - No any warranty
-
-#include <NtpClientLib.h>
-
-// ************************************
-// processSyncEvent()
-//
-// manage NTP sync events and warn in case of error
-// ************************************
+/* 
+ * ESP8266 Energy Meter
+ *  
+ * Written by Michele <o-zone@zerozone.it> Pinassi 
+ * Released under GPLv3 - No any warranty 
+ * 
+ * manage NTP sync events and warn in case of error
+ * 
+ */
 void processSyncEvent(NTPSyncEvent_t ntpEvent) {
-  DEBUG_PRINTLN("[DEBUG] processSyncEvent()");
+  DEBUG_PRINTLN("[DEBUG] processSyncEvent() ");
   if (ntpEvent) {
     DEBUG_PRINTLN("[NTP] Time Sync error: ");
     if (ntpEvent == noResponse)
