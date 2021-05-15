@@ -14,6 +14,10 @@
  * - Added time alarm
  * - minor changes
  * 
+ * 15.05.2021 - v0.0.3
+ * - Fix energy reset issue
+ * - Added energy reset button in web gui
+ * 
  */
  
 #define __DEBUG__
@@ -24,7 +28,7 @@
 // Firmware data
 const char BUILD[] = __DATE__ " " __TIME__;
 #define FW_NAME         "energymeter"
-#define FW_VERSION      "0.0.2"
+#define FW_VERSION      "0.0.3"
 
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
@@ -165,10 +169,12 @@ void buzzerBeep(uint8_t t) {
  */
 void energyReset() {
 #ifdef V3
-    pzem.resetEnergy();
+  pzem.resetEnergy();
 #else
-    // soft reset
-    config.energy_idx = atoi(env["e"]);
+  // soft reset
+  unsigned long e;
+  e = env["energy"];
+  config.energy_idx += e;
 #endif
   config.reset_date = now();
   // then, save to SPIFFS...
@@ -297,19 +303,19 @@ void loop() {
     float v = pzem.voltage(ip);
     if(!isnan(v)) {
       Serial.print("Voltage: "); Serial.print(v); Serial.println("V");
-      env["v"] = v;
+      env["voltage"] = v;
     }
 
     float i = pzem.current(ip);
     if(!isnan(i)) {
       Serial.print("Current: "); Serial.print(i); Serial.println("A");
-      env["i"] = i;
+      env["current"] = i;
     }
   
     float p = pzem.power(ip);
     if(!isnan(p)) {
       Serial.print("Power: "); Serial.print(p); Serial.println("W");
-      env["p"] = p;
+      env["power"] = p;
       // Check for power alarm threshold
       if((config.power_alarm > 0)&&(p > config.power_alarm)) {
         env["is_alarm"] = true;
@@ -322,9 +328,9 @@ void loop() {
     if(!isnan(e)) {
       Serial.print("Energy: "); Serial.print(e,3); Serial.println("kWh");
 #ifdef V3
-      env["e"] = e;
+      env["energy"] = e;
 #else
-      env["e"] = e - config.energy_idx;
+      env["energy"] = e - config.energy_idx;
 #endif
     }
 

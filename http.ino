@@ -105,7 +105,12 @@ void initWebServer() {
     is_restart=true;
     request->redirect("/?result=ok");
   });
-    
+
+  server.on("/reset",HTTP_GET, [](AsyncWebServerRequest *request) {
+    energyReset();
+    request->redirect("/?result=ok");
+  });
+  
   server.on("/post", HTTP_POST, [](AsyncWebServerRequest *request) {
     // WIFI
     if(request->hasParam("wifi_essid", true)) {
@@ -162,11 +167,6 @@ void initWebServer() {
     } else {
       request->redirect("/?result=error");      
     }
-  });
-
-  server.on("/reset",HTTP_GET, [](AsyncWebServerRequest *request) {
-    energyReset();
-    request->redirect("/?result=ok");
   });
   
   server.on("/ajax", HTTP_POST, [] (AsyncWebServerRequest *request) {

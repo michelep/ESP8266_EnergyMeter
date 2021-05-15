@@ -40,7 +40,7 @@
             			<div class="rt-table-header" style="background:#006d77">
                 		    <h2>Voltage</h2>
 				</div>
-                		<div class="rt-table-body" id="rt-v">
+                		<div class="rt-table-body" id="rt-voltage">
 				    <img src="loader.gif">
                 		</div>
         		    </div>
@@ -50,7 +50,7 @@
             			<div class="rt-table-header" style="background:#d62828">
                 		    <h2>Current</h2>
             			</div>
-                		<div class="rt-table-body" id="rt-i">
+                		<div class="rt-table-body" id="rt-current">
 				    <img src="loader.gif">
                 		</div>
         		    </div>
@@ -60,7 +60,7 @@
             			<div class="rt-table-header" style="background:#f3722c">
                 		    <h2>Power</h2>
             			</div>
-                		<div class="rt-table-body" id="rt-p">
+                		<div class="rt-table-body" id="rt-power">
 				    <img src="loader.gif">
                 		</div>
         		    </div>
@@ -70,7 +70,7 @@
             			<div class="rt-table-header" style="background:#43aa8b">
                 		    <h2>Energy</h2>
             			</div>
-                		<div class="rt-table-body" id="rt-e">
+                		<div class="rt-table-body" id="rt-energy">
 				    <img src="loader.gif">
                 		</div>
         		    </div>
@@ -96,6 +96,8 @@
     					</div><div class="pure-u-1 pure-u-md-1-4">
 					    <label>Last energy reset was on</label>
 					    <p>%reset_date%</p>
+    					</div><div class="pure-u-1 pure-u-md-1-4">
+			    		    <a href="/reset" type="button" class="pure-button button-warning">Reset</a>
 					</div>
 				    </div>
 				    <legend>WiFi and MQTT configuration</legend>
@@ -189,10 +191,10 @@ function ajaxCall(action, value) {
 	$('#status').html('FAILED ('+error+'): device is connected?');
     }).done(function(data) {
 	$('#status').html(data.status);
-	$('#rt-v').html(data.v+'V');
-	$('#rt-i').html(data.i+'A');
-	$('#rt-p').html(data.p+'W');
-	$('#rt-e').html(data.e+'Wh');
+	$('#rt-voltage').html(data.voltage+'V');
+	$('#rt-current').html(data.current+'A');
+	$('#rt-power').html(data.power+'W');
+	$('#rt-energy').html(data.energy+'Wh');
     });
     setTimeout(ajaxCall, 2000);
     return false;
